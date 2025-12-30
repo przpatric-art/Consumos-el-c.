@@ -34,9 +34,8 @@ total_final = subtotal_consumo + cargo_fijo + cobros_extras
 st.subheader("Resumen del Cobro")
 c1, c2, c3, c4 = st.columns(4)
 c1.metric("Consumo", f"{consumo_mes} kWh")
-c2.metric("Valor kWh", format_clp(precio_kwh))
-c3.metric("Extras", format_clp(cobros_extras))
-c4.metric("TOTAL", format_clp(total_final))
+c2.metric("Extras", format_clp(cobros_extras))
+c3.metric("TOTAL", format_clp(total_final))
 
 # --- FUNCIÓN PARA GENERAR IMAGEN ---
 def crear_imagen_boleta(nombre, n_cliente, consumo, v_kwh, cargo_fijo, extras, total):
