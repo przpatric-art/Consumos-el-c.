@@ -127,7 +127,7 @@ def generar_imagen_final():
     draw.text((50, 435), "TOTAL A PAGAR", fill=azul_oscuro)
     draw.text((350, 435), f"{format_clp(total_final)}", fill=(0, 0, 0))
     
-    draw.text((140, 510), "Gracias por su pago puntual.", fill=(150, 150, 150))
+    draw.text((140, 510), "______________________", fill=(150, 150, 150))
 
     buf = BytesIO()
     img.save(buf, format="PNG")
