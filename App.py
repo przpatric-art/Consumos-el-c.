@@ -25,7 +25,7 @@ st.sidebar.header("📝 ITEMS DE LA BOLETA")
 ant = st.sidebar.number_input("Lectura Anterior (kWh)", min_value=0)
 actual = st.sidebar.number_input("Lectura Actual (kWh)", min_value=0)
 cargo_lectura = st.sidebar.number_input("Valor Toma de Lectura ($)", min_value=0, value=1000)
-cobros_extras = st.sidebar.number_input("Otros Cobros Extras ($)", min_value=0, value=0)
+cobros_camara_y_porton = st.sidebar.number_input("Otros Cobros Extras ($)", min_value=0, value=0)
 
 # --- LÓGICA DE CÁLCULO INTERNO ---
 consumo_mes = max(0, actual - ant)
