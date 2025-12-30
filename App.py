@@ -42,7 +42,7 @@ c4.metric("TOTAL FINAL", format_clp(total_final))
 
 # --- GENERACION DE IMAGEN (LA BOLETA PROFESIONAL AZUL SIN ACENTOS) ---
 def generar_imagen_final():
-    ancho, alto = 500, 550
+    ancho, alto = 700, 650
     img = Image.new('RGB', (ancho, alto), color=(255, 255, 255))
     draw = ImageDraw.Draw(img)
     
@@ -80,7 +80,7 @@ def generar_imagen_final():
     draw.text((50, 435), "TOTAL A PAGAR", fill=azul_oscuro)
     draw.text((350, 435), f"{format_clp(total_final)}", fill=(0, 0, 0))
     
-    draw.text((140, 510), "Gracias por su pago puntual.", fill=(150, 150, 150))
+    draw.text((140, 510), fill=(150, 150, 150))
 
     buf = BytesIO()
     img.save(buf, format="PNG")
