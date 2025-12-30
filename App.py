@@ -1,127 +1,141 @@
 import streamlit as st
 import pandas as pd
 from io import BytesIO
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFont
 import datetime
+import random
 
-# Función para formato moneda chilena (sin decimales, puntos en miles)
+# --- CONFIGURACIÓN Y ESTILOS ---
+st.set_page_config(page_title="Generador Pro ⚡", page_icon="⚡", layout="wide")
+
 def format_clp(valor):
     return f"${int(valor):,}".replace(",", ".")
 
-st.set_page_config(page_title="Generador de Boletas Eléctricas", page_icon="⚡")
-
-# --- MENÚ LATERAL (SIDEBAR) ---
+# --- SIDEBAR: ENTRADA DE DATOS ---
 st.sidebar.header("📋 DATOS DEL CLIENTE")
 nombre = st.sidebar.text_input("Nombre y Apellido", "Juan Pérez")
-n_cliente = st.sidebar.text_input("Número de Cliente", "001")
+n_cliente = st.sidebar.text_input("Número de Cliente/Cuenta", "123456")
+fecha_emision = st.sidebar.date_input("Fecha de Emisión", datetime.date.today())
+fecha_vence = st.sidebar.date_input("Fecha de Vencimiento", datetime.date.today() + datetime.timedelta(days=15))
 
-st.sidebar.header("💰 VALORES DE CÁLCULO (INTERNOS)")
-# Estos ítems NO aparecen en la boleta
-precio_kwh = st.sidebar.number_input("1. Editar Valor por kWh ($)", min_value=0.0, value=150.0)
-cobro_general = st.sidebar.number_input("2. Editar Cobro General ($)", min_value=0, value=0)
+st.sidebar.divider()
+st.sidebar.header("📏 MEDICIÓN")
+ant = st.sidebar.number_input("Lectura Anterior (kWh)", min_value=0, value=1200)
+actual = st.sidebar.number_input("Lectura Actual (kWh)", min_value=0, value=1350)
 
-st.sidebar.header("📝 ITEMS DE LA BOLETA (VISIBLES)")
-# Estos ítems SÍ aparecen en la boleta
-ant = st.sidebar.number_input("Lectura Anterior (kWh)", min_value=0)
-actual = st.sidebar.number_input("Lectura Actual (kWh)", min_value=0)
-cargo_lectura = st.sidebar.number_input("Valor Toma de Lectura ($)", min_value=0, value=1000)
-cobro_porton_camara = st.sidebar.number_input("Cobro por Portón y Cámara ($)", min_value=0, value=0)
+st.sidebar.divider()
+st.sidebar.header("💰 TARIFAS Y CARGOS")
+precio_kwh = st.sidebar.number_input("Precio por kWh ($)", min_value=0.0, value=155.2)
+cargo_fijo = st.sidebar.number_input("Cargo Fijo / Lectura ($)", min_value=0, value=1200)
+otros_cargos = st.sidebar.number_input("Otros Cargos (Portón/Cámaras/Etc)", min_value=0, value=0)
 
-# --- LÓGICA DE CÁLCULO ---
-consumo_mes = max(0, actual - ant)
-subtotal_energia = round(consumo_mes * precio_kwh)
-total_final = subtotal_energia + cobro_general + cargo_lectura + cobro_porton_camara
+# --- LÓGICA DE NEGOCIO ---
+consumo_mes = actual - ant
+if consumo_mes < 0:
+    st.error("⚠️ Error: La lectura actual no puede ser menor a la anterior.")
+    consumo_mes = 0
 
-# --- INTERFAZ PRINCIPAL ---
-st.title("⚡ Generador de Boleta Eléctrico")
+monto_energia = round(consumo_mes * precio_kwh)
+total_final = monto_energia + cargo_fijo + otros_cargos
+folio = random.randint(10000, 99999)
 
-st.subheader("Resumen de Cobro Actual")
-c1, c2, c3, c4 = st.columns(4)
-c1.metric("Consumo", f"{consumo_mes} kWh")
-c2.metric("Portón/Cámara", format_clp(cobro_porton_camara))
-c3.metric("C. General", format_clp(cobro_general))
-c4.metric("TOTAL FINAL", format_clp(total_final))
+# --- CUERPO PRINCIPAL ---
+st.title("⚡ Sistema de Facturación Eléctrica")
 
-# --- GENERACIÓN DE IMAGEN (LA BOLETA PROFESIONAL AZUL) ---
-def generar_imagen_final():
-    # Dimensiones de la boleta
-    ancho, alto = 500, 550
-    # Color de fondo (Blanco)
+col_a, col_b = st.columns([1, 2])
+
+with col_a:
+    st.subheader("Resumen de Cuenta")
+    st.metric("Total a Pagar", format_clp(total_final))
+    st.metric("Consumo del Mes", f"{consumo_mes} kWh", delta=f"{consumo_mes} kWh" if consumo_mes > 0 else None)
+    
+    with st.expander("Ver desglose de costos"):
+        st.write(f"Energía: {format_clp(monto_energia)}")
+        st.write(f"Cargos Fijos: {format_clp(cargo_fijo)}")
+        st.write(f"Otros: {format_clp(otros_cargos)}")
+
+with col_b:
+    # Gráfico simple de comparación
+    st.subheader("Histórico de Consumo (kWh)")
+    data_grafico = pd.DataFrame({
+        "Mes": ["Anterior", "Actual"],
+        "kWh": [ant * 0.1, consumo_mes] # Simulación de histórico
+    })
+    st.bar_chart(data=data_grafico, x="Mes", y="kWh")
+
+# --- FUNCIÓN GENERAR IMAGEN ---
+def generar_boleta_pro():
+    ancho, alto = 600, 800
     img = Image.new('RGB', (ancho, alto), color=(255, 255, 255))
     draw = ImageDraw.Draw(img)
     
-    # 1. ENCABEZADO (Azul Profesional)
-    azul_oscuro = (26, 54, 104) # Color Corporativo
-    draw.rectangle([0, 0, ancho, 100], fill=azul_oscuro)
-    draw.text((30, 40), "BOLETA DE COBRO ELÉCTRICO", fill=(255, 255, 255))
-    
-    # 2. DATOS DEL CLIENTE Y FECHA
-    y = 130
-    fecha_hoy = datetime.date.today().strftime('%d/%m/%Y')
-    draw.text((40, y), f"Fecha de Emisión: {fecha_hoy}", fill=(50, 50, 50))
-    draw.text((40, y+30), f"CLIENTE: {nombre.upper()}", fill=(0, 0, 0))
-    draw.text((40, y+60), f"N. CUENTA: {n_cliente}", fill=(0, 0, 0))
-    
-    # Línea divisoria azul clara
-    draw.line([40, 230, 460, 230], fill=(200, 200, 200), width=1)
-    
-    # 3. DETALLE DE CONSUMO Y SERVICIOS
-    y_det = 250
-    draw.text((40, y_det), "DETALLE DE CONSUMO Y SERVICIOS", fill=azul_oscuro)
-    
-    # Consumo
-    draw.text((40, y_det+40), "Consumo registrado en el mes:", fill=(50, 50, 50))
-    draw.text((350, y_det+40), f"{consumo_mes} kWh", fill=(0, 0, 0))
-    
-    # Toma de lectura
-    draw.text((40, y_det+70), "Cargo Toma de Lectura:", fill=(50, 50, 50))
-    draw.text((350, y_det+70), format_clp(cargo_lectura), fill=(0, 0, 0))
-    
-    # Portón y Cámara (Sólo si es mayor a 0)
-    if cobro_porton_camara > 0:
-        draw.text((40, y_det+100), "Cobro Portón y Cámara:", fill=(50, 50, 50))
-        draw.text((350, y_det+100), format_clp(cobro_porton_camara), fill=(0, 0, 0))
-    
-    # 4. RECUADRO DE TOTAL (Estilo resaltado)
-    # Dibujamos un fondo azul muy suave para el total
-    draw.rectangle([30, 410, 470, 480], outline=azul_oscuro, width=2)
-    draw.text((50, 435), "TOTAL A PAGAR", fill=azul_oscuro)
-    draw.text((350, 435), f"{format_clp(total_final)}", fill=(0, 0, 0))
-    
-    # Pie de página
-    draw.text((140, 510), "Gracias por su pago puntual.", fill=(150, 150, 150))
+    try:
+        font_tit = ImageFont.truetype("arial.ttf", 28)
+        font_sub = ImageFont.truetype("arial.ttf", 18)
+        font_std = ImageFont.truetype("arial.ttf", 16)
+        font_bold = ImageFont.truetype("arial.ttf", 18)
+    except:
+        font_tit = font_sub = font_std = font_bold = ImageFont.load_default()
 
-    # Guardar en buffer
+    # Encabezado con degradado o bloque sólido
+    draw.rectangle([0, 0, ancho, 120], fill=(20, 40, 80))
+    draw.text((40, 30), "ESTADO DE CUENTA ELÉCTRICA", fill=(255, 255, 255), font=font_tit)
+    draw.text((40, 75), f"Folio N°: {folio} | Cliente: {n_cliente}", fill=(200, 200, 200), font=font_std)
+
+    # Bloque Datos Cliente
+    draw.text((40, 150), "DETALLES DEL CLIENTE", fill=(20, 40, 80), font=font_bold)
+    draw.text((40, 180), f"Nombre: {nombre.upper()}", fill=(0,0,0), font=font_std)
+    draw.text((40, 205), f"Fecha Emisión: {fecha_emision.strftime('%d/%m/%Y')}", fill=(0,0,0), font=font_std)
+    draw.text((320, 205), f"Vencimiento: {fecha_vence.strftime('%d/%m/%Y')}", fill=(200, 0, 0), font=font_bold)
+
+    # Detalle de Consumo (Tabla)
+    draw.rectangle([40, 250, 560, 290], fill=(240, 240, 240))
+    draw.text((50, 260), "DESCRIPCIÓN", fill=(0,0,0), font=font_bold)
+    draw.text((450, 260), "VALOR", fill=(0,0,0), font=font_bold)
+
+    y_pos = 310
+    items = [
+        (f"Consumo Energía ({consumo_mes} kWh x ${precio_kwh})", format_clp(monto_energia)),
+        ("Cargo Fijo / Administración", format_clp(cargo_fijo)),
+        ("Servicios Adicionales (Cámaras/Portón)", format_clp(otros_cargos)),
+    ]
+
+    for item, valor in items:
+        draw.text((50, y_pos), item, fill=(50, 50, 50), font=font_std)
+        draw.text((450, y_pos), valor, fill=(0, 0, 0), font=font_std)
+        y_pos += 40
+
+    # Línea de Total
+    draw.line([40, 450, 560, 450], fill=(20, 40, 80), width=2)
+    draw.text((50, 470), "TOTAL A PAGAR", fill=(20, 40, 80), font=font_tit)
+    draw.text((420, 470), format_clp(total_final), fill=(0,0,0), font=font_tit)
+
+    # Pie de página / Mensaje
+    draw.rectangle([0, 750, ancho, 800], fill=(240, 240, 240))
+    msg = "Corte de servicio tras 2 facturas vencidas. Evite recargos."
+    draw.text((120, 765), msg, fill=(100, 100, 100), font=font_std)
+
     buf = BytesIO()
     img.save(buf, format="PNG")
     return buf.getvalue()
 
-# --- BOTONES DE DESCARGA ---
+# --- BOTONES DE ACCIÓN ---
 st.divider()
-img_boleta = generar_imagen_final()
+img_final = generar_boleta_pro()
 
-col_img, col_xl = st.columns(2)
-with col_img:
-    st.download_button(
-        label="🖼️ Descargar Imagen PNG",
-        data=img_boleta,
-        file_name=f"Boleta_{n_cliente}.png",
-        mime="image/png"
-    )
-with col_xl:
-    # Excel para registro interno
-    df = pd.DataFrame({
-        "Concepto": ["Consumo kWh", "Precio kWh (Oculto)", "Cobro General (Oculto)", "Cargo Lectura", "Portón y Cámara", "Total Final"],
-        "Monto": [consumo_mes, precio_kwh, cobro_general, cargo_lectura, cobro_porton_camara, total_final]
-    })
+col1, col2, col3 = st.columns(3)
+with col1:
+    st.download_button("📩 Descargar Boleta (PNG)", data=img_final, file_name=f"Boleta_{n_cliente}_{folio}.png")
+with col2:
+    # Preparar Excel
+    resumen = {
+        "Folio": [folio], "Cliente": [nombre], "Consumo kWh": [consumo_mes],
+        "Total": [total_final], "Vencimiento": [fecha_vence]
+    }
+    df = pd.DataFrame(resumen)
     output = BytesIO()
     with pd.ExcelWriter(output, engine='openpyxl') as writer:
         df.to_excel(writer, index=False)
-    st.download_button(
-        label="📊 Descargar Excel Interno",
-        data=output.getvalue(),
-        file_name=f"Control_Interno_{n_cliente}.xlsx"
-    )
+    st.download_button("📊 Exportar a Excel", data=output.getvalue(), file_name=f"Registro_{fecha_emision}.xlsx")
 
-# Previsualización
-st.image(img_boleta, caption="Vista previa de la boleta profesional").
+st.image(img_final, caption="Vista previa del documento oficial", use_container_width=True)
