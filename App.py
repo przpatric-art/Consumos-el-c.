@@ -79,7 +79,7 @@ def generar_imagen_final():
     
     # Portón y Cámara (Sólo si es mayor a 0)
     if cobro_porton_camara > 0:
-        draw.text((40, y_det+100), "Cobro Portón y Cámara:", fill=(50, 50, 50))
+        draw.text((40, y_det+100), "Cobro Porton y Camara:", fill=(50, 50, 50))
         draw.text((350, y_det+100), format_clp(cobro_porton_camara), fill=(0, 0, 0))
     
     # 4. RECUADRO DE TOTAL (Estilo resaltado)
