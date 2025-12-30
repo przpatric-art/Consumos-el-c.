@@ -59,11 +59,11 @@ with st.sidebar:
         ant = st.number_input("Lectura Anterior (kWh)", min_value=0, value=lectura_ant_def)
         actual = st.number_input("Lectura Actual (kWh)", min_value=0)
         cargo_lectura = st.number_input("Valor Toma de Lectura ($)", min_value=0, value=1000)
-        cobro_porton_camara = st.number_input("Porton y Camara ($)", min_value=0, value=0)
+        cobro_gasto_comun= st.number_input("gasto comun($)", min_value=0, value=0)
 
 # --- CÁLCULOS ---
 consumo_mes = max(0, actual - ant)
-total_final = round(consumo_mes * precio_kwh) + cobro_general + cargo_lectura + cobro_porton_camara
+total_final = round(consumo_mes * precio_kwh) + cobro_general + cargo_lectura + cobro_gasto_comun
 
 # --- ACCIÓN: GUARDAR EN BASE DE DATOS ---
 if st.sidebar.button("💾 GUARDAR REGISTRO Y GENERAR"):
