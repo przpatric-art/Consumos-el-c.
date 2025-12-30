@@ -1,5 +1,1 @@
-streamlit
-st-supabase-connection
-supabase
-pandas
-fpdf
+
