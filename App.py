@@ -11,20 +11,20 @@ def format_clp(valor):
 st.set_page_config(page_title="Generador de Boletas Eléctricas", page_icon="⚡")
 
 st.title("⚡ Sistema de Cobro Eléctrico")
-st.markdown("Calcule el consumo y genere la boleta para el cliente.")
+st.markdown("Gestión de consumos y generación de boletas digitales.")
 
-# --- ENTRADA DE DATOS (SIDEBAR) ---
+# --- ENTRADA DE DATOS (SIDEBAR / MENÚ IZQUIERDO) ---
 with st.sidebar:
     st.header("👤 Datos del Cliente")
     nombre = st.text_input("Nombre y Apellido", "Juan Pérez")
     n_cliente = st.text_input("Número de Cliente", "001")
     
-    st.header("⚙️ Parámetros Internos (OCULTOS)")
-    st.info("Estos valores se usan para el cálculo pero NO aparecen en la boleta.")
-    precio_kwh = st.number_input("Valor por kWh ($)", min_value=0.0, value=150.0)
-    cobro_general_editable = st.number_input("Cobro General Editable ($)", min_value=0, value=0)
+    st.header("⚙️ Parámetros de Cobro")
+    # Estos valores afectan el total pero no aparecen con nombre en la boleta
+    precio_kwh = st.number_input("Valor por kWh ($)", min_value=0.0, value=150.0, help="Cálculo interno")
+    cobro_general = st.number_input("Cobro General ($)", min_value=0, value=0, help="Monto base sumado al total")
     
-    st.header("📊 Lecturas y Cobros Visibles")
+    st.header("📊 Lecturas y Extras")
     ant = st.number_input("Lectura Anterior (kWh)", min_value=0)
     actual = st.number_input("Lectura Actual (kWh)", min_value=0)
     cargo_lectura = st.number_input("Valor por Toma de Lectura ($)", min_value=0, value=1000)
@@ -32,25 +32,25 @@ with st.sidebar:
 
 # --- LÓGICA DE CÁLCULO ---
 consumo_mes = max(0, actual - ant)
-# Cálculo interno que suma los parámetros ocultos
+# Cálculo que incluye los parámetros internos y el nuevo cobro general
 monto_energia = round(consumo_mes * precio_kwh)
-total_final = monto_energia + cobro_general_editable + cargo_lectura + cobros_extras
+total_final = monto_energia + cobro_general + cargo_lectura + cobros_extras
 
 # --- RESUMEN EN PANTALLA ---
-st.subheader("Resumen del Cálculo")
-c1, c2, c3 = st.columns(3)
-c1.metric("Consumo kWh", f"{consumo_mes}")
-c2.metric("Cobros Extras", format_clp(cobros_extras))
-c3.metric("Total Final", format_clp(total_final))
+st.subheader("Resumen del Cálculo Actual")
+c1, c2, c3, c4 = st.columns(4)
+c1.metric("Consumo", f"{consumo_mes} kWh")
+c2.metric("Cobro General", format_clp(cobro_general))
+c3.metric("Extras", format_clp(cobros_extras))
+c4.metric("TOTAL", format_clp(total_final))
 
-# --- FUNCIÓN PARA GENERAR LA IMAGEN (DISEÑO LIMPIO) ---
+# --- FUNCIÓN PARA GENERAR LA IMAGEN ---
 def crear_boleta_final(nombre, n_cliente, consumo, cargo_lec, extras, total):
-    # Crear un lienzo blanco
     ancho, alto = 500, 520
     img = Image.new('RGB', (ancho, alto), color=(255, 255, 255))
     draw = ImageDraw.Draw(img)
     
-    # Encabezado Estético
+    # Encabezado
     draw.rectangle([0, 0, ancho, 80], fill=(45, 45, 45))
     draw.text((30, 25), "BOLETA DE CONSUMO ELÉCTRICO", fill=(255, 255, 255))
     
@@ -61,10 +61,9 @@ def crear_boleta_final(nombre, n_cliente, consumo, cargo_lec, extras, total):
     draw.text((40, y_inicio + 30), f"Cliente: {nombre.upper()}", fill=(0, 0, 0))
     draw.text((40, y_inicio + 60), f"Número de Cliente: {n_cliente}", fill=(0, 0, 0))
     
-    # Línea divisoria
     draw.line([40, 210, 460, 210], fill=(200, 200, 200), width=1)
     
-    # Detalles de la Boleta (AQUÍ NO APARECE VALOR KWH NI COBRO GENERAL)
+    # Detalle Visible (Sin Precio kWh ni Cobro General escrito)
     y_det = 240
     draw.text((40, y_det), "DETALLE DE COBRO", fill=(100, 100, 100))
     
@@ -78,15 +77,13 @@ def crear_boleta_final(nombre, n_cliente, consumo, cargo_lec, extras, total):
         draw.text((40, y_det + 100), "Cobros Extras / Otros:", fill=(0, 0, 0))
         draw.text((320, y_det + 100), format_clp(extras), fill=(0, 0, 0))
     
-    # Recuadro para el TOTAL NETO
-    # El valor del total ya incluye internamente el cálculo de kWh y el cobro general
+    # Recuadro para el TOTAL (Suma interna de todo)
     draw.rectangle([40, 390, 460, 460], outline=(0, 0, 0), width=2)
     draw.text((60, 415), "TOTAL A PAGAR", fill=(0, 0, 0))
     draw.text((320, 415), f"{format_clp(total)}", fill=(0, 0, 0))
     
     draw.text((120, 490), "Comprobante digital para envío por RRSS", fill=(180, 180, 180))
 
-    # Guardar imagen en memoria para descarga
     buffer = BytesIO()
     img.save(buffer, format="PNG")
     return buffer.getvalue()
@@ -104,10 +101,10 @@ with col1:
         mime="image/png"
     )
 with col2:
-    # El Excel es tu registro privado, aquí sí incluimos todo para que sepas qué cobraste
+    # El Excel incluye todos los datos para tu control personal
     df_registro = pd.DataFrame({
-        "Concepto": ["Consumo kWh", "Valor kWh (Interno)", "Cobro General (Interno)", "Toma Lectura", "Extras", "Total Cobrado"],
-        "Detalle": [consumo_mes, format_clp(precio_kwh), format_clp(cobro_general_editable), format_clp(cargo_lectura), format_clp(cobros_extras), format_clp(total_final)]
+        "Concepto": ["Consumo kWh", "Valor kWh (Oculto)", "Cobro General (Oculto)", "Toma Lectura", "Extras", "Total Cobrado"],
+        "Valor": [consumo_mes, format_clp(precio_kwh), format_clp(cobro_general), format_clp(cargo_lectura), format_clp(cobros_extras), format_clp(total_final)]
     })
     buffer_ex = BytesIO()
     with pd.ExcelWriter(buffer_ex, engine='openpyxl') as writer:
@@ -118,4 +115,4 @@ with col2:
         file_name=f"Registro_{n_cliente}.xlsx"
     )
 
-st.image(boleta_img, caption="Vista previa de la boleta (Recuerda que los ítems ocultos ya están sumados en el total)")
+st.image(boleta_img, caption="Vista previa de la boleta")
