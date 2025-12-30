@@ -1,89 +1,106 @@
 import streamlit as st
 import pandas as pd
-import datetime
 from io import BytesIO
+from PIL import Image, ImageDraw, ImageFont
+import datetime
 
-# Configuración
-st.set_page_config(page_title="Calculadora Eléctrica Chile", page_icon="⚡")
-
-def format_chilean_pesos(valor):
+# Función para formato moneda chilena
+def format_clp(valor):
     return f"${int(valor):,}".replace(",", ".")
 
-st.title("⚡ Generador de Cobro Eléctrico")
+st.set_page_config(page_title="Generador de Boletas", page_icon="⚡")
+
+st.title("⚡ Cobro Eléctrico Pro")
 
 # --- ENTRADA DE DATOS ---
-with st.expander("📝 Datos del Cliente y Consumo", expanded=True):
-    nombre = st.text_input("Nombre del Cliente")
-    n_cliente = st.text_input("Número de Cliente")
-    
-    col1, col2 = st.columns(2)
-    with col1:
-        ant = st.number_input("Lectura Anterior (kWh)", min_value=0.0)
-        actual = st.number_input("Lectura Actual (kWh)", min_value=0.0)
-    with col2:
-        precio_kwh = st.number_input("Valor kWh ($ CLP)", min_value=0.0, format="%.2f")
-        cargo_fijo = st.number_input("Cargo Toma Lectura ($ CLP)", min_value=0)
+with st.sidebar:
+    st.header("Configuración")
+    nombre = st.text_input("Nombre del Cliente", "Juan Pérez")
+    n_cliente = st.text_input("N° de Cliente", "123456")
+    ant = st.number_input("Lectura Anterior", min_value=0)
+    actual = st.number_input("Lectura Actual", min_value=0)
+    precio_kwh = st.number_input("Precio kWh ($)", min_value=0.0, value=150.0)
+    cargo_fijo = st.number_input("Cargo Lectura ($)", min_value=0, value=1000)
 
-# --- CÁLCULOS ---
-consumo = max(0.0, actual - ant)
+# Cálculos
+consumo = max(0, actual - ant)
 subtotal = round(consumo * precio_kwh)
-total = subtotal + int(cargo_fijo)
+total = subtotal + cargo_fijo
 
-# Crear un DataFrame para mostrar y exportar
-datos_boleta = {
-    "Concepto": ["Lectura Anterior", "Lectura Actual", "Consumo Mes", "Valor kWh", "Cargo Lectura", "TOTAL A PAGAR"],
-    "Detalle": [f"{ant} kWh", f"{actual} kWh", f"{consumo} kWh", f"${precio_kwh}", format_chilean_pesos(cargo_fijo), format_chilean_pesos(total)]
-}
-df = pd.DataFrame(datos_boleta)
+# Mostrar Resumen en Pantalla
+st.subheader("Resumen del Cobro")
+col1, col2 = st.columns(2)
+col1.metric("Consumo (kWh)", f"{consumo} kWh")
+col2.metric("Total a Pagar", format_clp(total))
 
-st.subheader("Resumen de Cobro")
-st.table(df)
+# --- FUNCIÓN PARA GENERAR IMAGEN ESTILIZADA ---
+def crear_imagen_pro(nombre, n_cliente, consumo, total, precio_kwh, cargo_fijo):
+    # Crear lienzo (Ancho x Alto)
+    ancho, alto = 500, 600
+    img = Image.new('RGB', (ancho, alto), color=(245, 245, 245))
+    draw = ImageDraw.Draw(img)
+    
+    # Dibujar Encabezado Azul
+    draw.rectangle([0, 0, ancho, 100], fill=(0, 51, 102))
+    draw.text((20, 35), "COMPROBANTE DE CONSUMO", fill=(255, 255, 255))
+    
+    # Cuerpo de la boleta
+    y = 130
+    draw.text((30, y), f"Fecha: {datetime.date.today().strftime('%d/%m/%Y')}", fill=(0, 0, 0))
+    draw.text((30, y+30), f"Cliente: {nombre.upper()}", fill=(0, 0, 0))
+    draw.text((30, y+60), f"N. Cuenta: {n_cliente}", fill=(0, 0, 0))
+    
+    # Línea divisoria
+    draw.line([30, 230, 470, 230], fill=(200, 200, 200), width=2)
+    
+    # Detalles
+    y_det = 250
+    draw.text((30, y_det), "Detalle del Consumo", fill=(0, 51, 102))
+    draw.text((30, y_det+40), f"Consumo del Mes: {consumo} kWh", fill=(50, 50, 50))
+    draw.text((30, y_det+70), f"Valor por kWh: {format_clp(precio_kwh)}", fill=(50, 50, 50))
+    draw.text((30, y_det+100), f"Cargo Toma Lectura: {format_clp(cargo_fijo)}", fill=(50, 50, 50))
+    
+    # Recuadro de Total
+    draw.rectangle([30, 420, 470, 500], outline=(0, 51, 102), width=3)
+    draw.text((50, 450), "TOTAL A PAGAR:", fill=(0, 51, 102))
+    draw.text((300, 450), f"{format_clp(total)}", fill=(0, 0, 0))
+    
+    draw.text((150, 550), "¡Gracias por su pago oportuno!", fill=(100, 100, 100))
 
-# --- EXPORTAR A EXCEL ---
-def to_excel(df):
-    output = BytesIO()
-    writer = pd.ExcelWriter(output, engine='openpyxl')
-    df.to_excel(writer, index=False, sheet_name='Boleta')
-    writer.close()
-    processed_data = output.getvalue()
-    return processed_data
-
-# --- EXPORTAR A IMAGEN ---
-# Creamos una representación visual simple para la "Captura"
-def generar_recuadro_imagen():
-    # Streamlit no puede "tomar fotos" de sí mismo fácilmente, 
-    # pero podemos crear un bloque de texto formateado que el usuario puede capturar
-    # o usar un componente para descargar el resumen.
-    st.info("💡 Consejo: Para enviar por RRSS, puedes tomar una captura de pantalla al recuadro de arriba o descargar el Excel.")
+    # Guardar imagen en buffer
+    buf = BytesIO()
+    img.save(buf, format="PNG")
+    return buf.getvalue()
 
 # --- BOTONES DE DESCARGA ---
 st.divider()
-col_btn1, col_btn2 = st.columns(2)
+c1, c2 = st.columns(2)
 
-with col_btn1:
-    excel_data = to_excel(df)
+with c1:
+    # Generar Excel
+    output = BytesIO()
+    df = pd.DataFrame({
+        "Concepto": ["Consumo", "Precio kWh", "Cargo", "Total"],
+        "Valor": [f"{consumo} kWh", precio_kwh, cargo_fijo, total]
+    })
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        df.to_excel(writer, index=False)
+    
     st.download_button(
-        label="📥 Descargar Excel",
-        data=excel_data,
-        file_name=f"Cobro_{n_cliente}_{nombre}.xlsx",
+        label="📊 Descargar Excel",
+        data=output.getvalue(),
+        file_name=f"Cobro_{n_cliente}.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
 
-with col_btn2:
-    if st.button("📸 Generar Formato Imagen"):
-        st.write("---")
-        st.markdown(f"""
-        ### 🧾 COMPROBANTE DE COBRO
-        **Cliente:** {nombre}  
-        **N° Cuenta:** {n_cliente}  
-        **Fecha:** {datetime.date.today().strftime('%d/%m/%Y')}
-        
-        * Consumo: {consumo} kWh
-        * Valor kWh: ${precio_kwh}
-        * Cargo Lectura: {format_chilean_pesos(cargo_fijo)}
-        
-        **TOTAL A PAGAR: {format_chilean_pesos(total)}**
-        ---
-        """)
-        st.caption("Puedes sacar una captura de pantalla (Screenshot) a este recuadro para enviarlo por WhatsApp.")
+with c2:
+    img_data = crear_imagen_pro(nombre, n_cliente, consumo, total, precio_kwh, cargo_fijo)
+    st.download_button(
+        label="🖼️ Descargar Imagen PNG",
+        data=img_data,
+        file_name=f"Boleta_{n_cliente}.png",
+        mime="image/png"
+    )
 
+# Vista previa de la imagen al final
+st.image(img_data, caption="Vista previa de tu boleta digital")
