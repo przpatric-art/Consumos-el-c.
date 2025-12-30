@@ -124,4 +124,4 @@ with col_xl:
     )
 
 # Previsualización
-st.image(img_boleta, caption="Vista previa de la boleta profesional")
+st.image(img_boleta, caption="Vista previa de la boleta profesional").
