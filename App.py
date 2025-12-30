@@ -79,7 +79,7 @@ if st.sidebar.button("💾 GUARDAR REGISTRO Y GENERAR"):
     st.toast(f"Registro de {nombre} guardado")
 
 # --- CUERPO PRINCIPAL ---
-st.title("⚡ Generador de Boletas")
+st.title("⚡ Generador de Boletas con Memoria")
 
 col_m1, col_m2, col_m3 = st.columns(3)
 with col_m1: st.metric("Consumo", f"{consumo_mes} kWh")
