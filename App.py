@@ -56,8 +56,6 @@ def crear_imagen_boleta(nombre, n_cliente, consumo, v_kwh, cargo_fijo, extras, t
     
     draw.line([40, 210, 460, 210], fill=(200, 200, 200), width=1)
     
-    # Detalle con Valor kWh incluido
-    y_det = 230
     draw.text((40, y_det), "DETALLE DE COBROS", fill=(20, 40, 60))
     
     draw.text((40, y_det+40), f"Consumo Mes: {consumo} kWh", fill=(50, 50, 50))
@@ -77,8 +75,6 @@ def crear_imagen_boleta(nombre, n_cliente, consumo, v_kwh, cargo_fijo, extras, t
     draw.rectangle([40, 430, 460, 500], outline=(20, 40, 60), width=2)
     draw.text((60, 455), "TOTAL A PAGAR", fill=(20, 40, 60))
     draw.text((320, 455), f"{format_clp(total)}", fill=(0, 0, 0))
-    
-    draw.text((130, 540), "Gracias por su pago puntual", fill=(150, 150, 150))
 
     buf = BytesIO()
     img.save(buf, format="PNG")
