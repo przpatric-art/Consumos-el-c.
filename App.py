@@ -31,7 +31,7 @@ if uploaded_file:
     except Exception as e:
         st.sidebar.error("Error al leer el archivo")
 
-# --- MENU LATERAL ---
+# --- MENU LATERAL (SIDEBAR) ---
 with st.sidebar:
     st.title("Panel de Control")
     
@@ -44,11 +44,11 @@ with st.sidebar:
         if n_cliente_input in datos_previos:
             nombre_def = datos_previos[n_cliente_input]["Nombre"]
             lectura_ant_def = int(datos_previos[n_cliente_input]["Lectura_Anterior"])
-            st.caption(f"✅ Cliente encontrado. Lectura anterior sugerida: {lectura_ant_def}")
+            st.caption(f"✅ Cliente encontrado. Lectura anterior: {lectura_ant_def}")
 
         nombre = st.text_input("Nombre y Apellido", nombre_def)
     
-    with st.expander("⚙️ Configuracion", expanded=False):
+    with st.expander("⚙️ Configuracion Interna", expanded=False):
         precio_kwh = st.number_input("Valor por kWh ($)", min_value=0.0, value=150.0)
         cobro_general = st.number_input("Cobro General ($)", min_value=0, value=0)
     
@@ -56,7 +56,7 @@ with st.sidebar:
         ant = st.number_input("Lectura Anterior (kWh)", min_value=0, value=lectura_ant_def)
         actual = st.number_input("Lectura Actual (kWh)", min_value=0)
         cargo_lectura = st.number_input("Valor Toma de Lectura ($)", min_value=0, value=1000)
-        # Cambio solicitado: Gasto Comun
+        # ITEM ACTUALIZADO: Gasto Comun
         gasto_comun = st.number_input("Gasto Comun ($)", min_value=0, value=0)
 
 # --- CALCULOS ---
@@ -64,40 +64,42 @@ consumo_mes = max(0, actual - ant)
 subtotal_energia = round(consumo_mes * precio_kwh)
 total_final = subtotal_energia + cobro_general + cargo_lectura + gasto_comun
 
-# --- ACCION: GUARDAR EN BASE DE DATOS ---
-if st.sidebar.button("💾 GUARDAR REGISTRO Y GENERAR"):
+# --- BOTON GUARDAR REGISTRO ---
+if st.sidebar.button("💾 GUARDAR REGISTRO"):
     nuevo_registro = pd.DataFrame({
         "Nombre": [nombre],
         "N_Cliente": [n_cliente_input],
         "Lectura_Anterior": [ant],
         "Lectura_Actual": [actual]
     })
+    # Evitar duplicados del mismo cliente en la misma sesion
     st.session_state.db_clientes = st.session_state.db_clientes[st.session_state.db_clientes.N_Cliente != n_cliente_input]
     st.session_state.db_clientes = pd.concat([st.session_state.db_clientes, nuevo_registro], ignore_index=True)
-    st.toast(f"Registro de {nombre} guardado")
+    st.toast(f"Registro de {nombre} guardado en la base de datos")
 
-# --- CUERPO PRINCIPAL ---
+# --- INTERFAZ PRINCIPAL ---
 st.title("⚡ Generador de Boletas Profesionales")
 
+# Tarjetas de Resumen
 col_m1, col_m2, col_m3, col_m4 = st.columns(4)
 with col_m1: st.metric("Consumo", f"{consumo_mes} kWh")
 with col_m2: st.metric("Gasto Comun", format_clp(gasto_comun))
-with col_m3: st.metric("Clientes Procesados", len(st.session_state.db_clientes))
-with col_m4: st.metric("TOTAL FINAL", format_clp(total_final))
+with col_m3: st.metric("Clientes en Lista", len(st.session_state.db_clientes))
+with col_m4: st.metric("TOTAL A COBRAR", format_clp(total_final))
 
 st.markdown("---")
 
-# Visualizacion y Descarga
+# Visualizacion de la Boleta
 col_preview, col_actions = st.columns([2, 1])
 
-def generar_imagen_final():
+def generar_boleta_final():
     ancho, alto = 500, 550
     img = Image.new('RGB', (ancho, alto), color=(255, 255, 255))
     draw = ImageDraw.Draw(img)
-    azul_oscuro = (26, 54, 104) 
+    azul_profesional = (26, 54, 104) 
     
-    # Encabezado
-    draw.rectangle([0, 0, ancho, 100], fill=azul_oscuro)
+    # Encabezado Azul
+    draw.rectangle([0, 0, ancho, 100], fill=azul_profesional)
     draw.text((30, 40), "BOLETA DE COBRO ELECTRICO", fill=(255, 255, 255))
     
     # Datos Cliente
@@ -109,25 +111,26 @@ def generar_imagen_final():
     
     draw.line([40, 230, 460, 230], fill=(200, 200, 200), width=1)
     
-    # Detalles
+    # Detalle de Servicios (Sin Acentos para evitar errores)
     y_det = 250
-    draw.text((40, y_det), "DETALLE DE CONSUMO Y SERVICIOS", fill=azul_oscuro)
+    draw.text((40, y_det), "DETALLE DE CONSUMO Y SERVICIOS", fill=azul_profesional)
     draw.text((40, y_det+40), "Consumo registrado en el mes:", fill=(50, 50, 50))
     draw.text((350, y_det+40), f"{consumo_mes} kWh", fill=(0, 0, 0))
     
     draw.text((40, y_det+70), "Cargo Toma de Lectura:", fill=(50, 50, 50))
     draw.text((350, y_det+70), format_clp(cargo_lectura), fill=(0, 0, 0))
     
+    # ITEM ACTUALIZADO EN IMAGEN: Gasto Comun
     if gasto_comun > 0:
         draw.text((40, y_det+100), "Gasto Comun:", fill=(50, 50, 50))
         draw.text((350, y_det+100), format_clp(gasto_comun), fill=(0, 0, 0))
     
-    # Total
-    draw.rectangle([30, 410, 470, 480], outline=azul_oscuro, width=2)
-    draw.text((50, 435), "TOTAL A PAGAR", fill=azul_oscuro)
+    # Cuadro de Total
+    draw.rectangle([30, 410, 470, 480], outline=azul_profesional, width=2)
+    draw.text((50, 435), "TOTAL A PAGAR", fill=azul_profesional)
     draw.text((350, 435), f"{format_clp(total_final)}", fill=(0, 0, 0))
     
-    draw.text((140, 510), "______________________", fill=(150, 150, 150))
+    draw.text((140, 510), "Gracias por su pago puntual.", fill=(150, 150, 150))
 
     buf = BytesIO()
     img.save(buf, format="PNG")
@@ -135,23 +138,26 @@ def generar_imagen_final():
 
 with col_preview:
     st.subheader("🖼️ Vista Previa")
-    img_boleta = generar_imagen_final()
-    st.image(img_boleta, use_container_width=True)
+    img_bytes = generar_boleta_final()
+    st.image(img_bytes, use_container_width=True)
 
 with col_actions:
-    st.subheader("📥 Exportar")
-    st.download_button("Descargar Boleta (Imagen)", img_boleta, f"Boleta_{n_cliente_input}.png", "image/png")
+    st.subheader("📥 Exportar Datos")
+    # Boton para la imagen individual
+    st.download_button("Descargar Imagen (PNG)", img_bytes, f"Boleta_{n_cliente_input}.png", "image/png")
     
+    # Boton para el Excel consolidado (Base de Datos)
     if not st.session_state.db_clientes.empty:
-        buffer_all = BytesIO()
-        with pd.ExcelWriter(buffer_all, engine='openpyxl') as writer:
+        st.write("---")
+        st.write(f"Tienes {len(st.session_state.db_clientes)} registros listos.")
+        buffer_excel = BytesIO()
+        with pd.ExcelWriter(buffer_excel, engine='openpyxl') as writer:
             st.session_state.db_clientes.to_excel(writer, index=False)
         
         st.download_button(
             label="Descargar Base de Datos (Excel)",
-            data=buffer_all.getvalue(),
-            file_name=f"Base_Datos_Electricidad.xlsx",
+            data=buffer_excel.getvalue(),
+            file_name=f"Base_Datos_Consumo_{datetime.date.today().strftime('%m_%Y')}.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
-    
-    st.info("Al guardar cada cliente, se acumulan en la base de datos para descargarla al final.")
+        st.caption("Este Excel servirá para cargar las lecturas anteriores el próximo mes.")
