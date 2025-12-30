@@ -36,4 +36,88 @@ if consumo_mes < 0:
     consumo_mes = 0
 
 monto_energia = round(consumo_mes * precio_kwh)
-total_final = monto_energia + cargo
+total_final = monto_energia + cargo_fijo + otros_cargos
+folio = random.randint(10000, 99999)
+
+# --- CUERPO PRINCIPAL ---
+st.title("⚡ Generador de Boleta Eléctrica")
+
+st.subheader("Resumen del Cobro")
+c1, c2, c3 = st.columns(3)
+c1.metric("Consumo Mes", f"{consumo_mes} kWh")
+c2.metric("Vencimiento", fecha_vence.strftime('%d/%m/%Y'))
+c3.metric("TOTAL A PAGAR", format_clp(total_final))
+
+# --- FUNCIÓN GENERAR IMAGEN ---
+def generar_boleta_pro():
+    ancho, alto = 600, 750
+    img = Image.new('RGB', (ancho, alto), color=(255, 255, 255))
+    draw = ImageDraw.Draw(img)
+    
+    try:
+        # Nota: En Streamlit Cloud o Linux, usar 'DejaVuSans.ttf' si Arial no está disponible
+        font_tit = ImageFont.truetype("arial.ttf", 28)
+        font_sub = ImageFont.truetype("arial.ttf", 18)
+        font_std = ImageFont.truetype("arial.ttf", 16)
+        font_bold = ImageFont.truetype("arial.ttf", 18)
+    except:
+        font_tit = font_sub = font_std = font_bold = ImageFont.load_default()
+
+    # Encabezado
+    azul_oscuro = (20, 40, 80)
+    draw.rectangle([0, 0, ancho, 120], fill=azul_oscuro)
+    draw.text((40, 30), "BOLETA DE COBRO ELÉCTRICO", fill=(255, 255, 255), font=font_tit)
+    draw.text((40, 75), f"Folio N°: {folio} | N° Cuenta: {n_cliente}", fill=(200, 200, 200), font=font_std)
+
+    # Bloque Datos Cliente
+    draw.text((40, 150), "INFORMACIÓN DEL CLIENTE", fill=azul_oscuro, font=font_bold)
+    draw.text((40, 180), f"Nombre: {nombre.upper()}", fill=(0,0,0), font=font_std)
+    draw.text((40, 205), f"Fecha Emisión: {fecha_emision.strftime('%d/%m/%Y')}", fill=(0,0,0), font=font_std)
+    draw.text((320, 205), f"Vencimiento: {fecha_vence.strftime('%d/%m/%Y')}", fill=(200, 0, 0), font=font_bold)
+
+    # Detalle de Consumo
+    draw.rectangle([40, 260, 560, 300], fill=(240, 240, 240))
+    draw.text((50, 270), "DESCRIPCIÓN", fill=(0,0,0), font=font_bold)
+    draw.text((450, 270), "MONTO", fill=(0,0,0), font=font_bold)
+
+    y_pos = 320
+    items = [
+        (f"Energía ({consumo_mes} kWh x ${precio_kwh})", format_clp(monto_energia)),
+        ("Toma de Lectura / Cargo Fijo", format_clp(cargo_fijo)),
+        ("Servicios Comunidad (Cámaras/Portón)", format_clp(otros_cargos)),
+    ]
+
+    for item, valor in items:
+        draw.text((50, y_pos), item, fill=(50, 50, 50), font=font_std)
+        draw.text((450, y_pos), valor, fill=(0, 0, 0), font=font_std)
+        y_pos += 40
+
+    # Total
+    draw.line([40, 480, 560, 480], fill=azul_oscuro, width=2)
+    draw.text((50, 500), "TOTAL A PAGAR", fill=azul_oscuro, font=font_tit)
+    draw.text((420, 500), format_clp(total_final), fill=(0,0,0), font=font_tit)
+
+    # Pie de página
+    draw.text((150, 700), "Favor realizar el pago antes del vencimiento.", fill=(150, 150, 150), font=font_std)
+
+    buf = BytesIO()
+    img.save(buf, format="PNG")
+    return buf.getvalue()
+
+# --- BOTONES Y PREVISUALIZACIÓN ---
+st.divider()
+img_final = generar_boleta_pro()
+
+col1, col2 = st.columns(2)
+with col1:
+    st.download_button("🖼️ Descargar Boleta (PNG)", data=img_final, file_name=f"Boleta_{n_cliente}.png", mime="image/png")
+with col2:
+    df_excel = pd.DataFrame({
+        "Folio": [folio], "Cliente": [nombre], "Consumo": [consumo_mes], "Total": [total_final]
+    })
+    output = BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        df_excel.to_excel(writer, index=False)
+    st.download_button("📊 Guardar en Excel", data=output.getvalue(), file_name=f"Registro_{n_cliente}.xlsx")
+
+st.image(img_final, caption="Previsualización de la boleta", use_container_width=True)
