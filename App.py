@@ -111,7 +111,7 @@ with col_img:
 with col_xl:
     # Excel para registro interno
     df = pd.DataFrame({
-        "Concepto": ["Consumo kWh", "Precio kWh (Oculto)", "Cobro General (Oculto)", "Cargo Lectura", "Portón y Cámara", "Total Final"],
+        "Concepto": ["Consumo kWh", "Precio kWh (Oculto)", "Cobro General (Oculto)", "Cargo Lectura", "Porton y Camara", "Total Final"],
         "Monto": [consumo_mes, precio_kwh, cobro_general, cargo_lectura, cobro_porton_camara, total_final]
     })
     output = BytesIO()
