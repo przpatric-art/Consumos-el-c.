@@ -4,14 +4,13 @@ from io import BytesIO
 from PIL import Image, ImageDraw
 import datetime
 
-# Función para formato moneda chilena (sin decimales, puntos en miles)
+# Función para formato moneda chilena
 def format_clp(valor):
     return f"${int(valor):,}".replace(",", ".")
 
 st.set_page_config(page_title="Generador de Boletas Eléctricas", page_icon="⚡")
 
 st.title("⚡ Sistema de Cobro Eléctrico")
-st.markdown("Gestión de consumos y generación de boletas digitales.")
 
 # --- ENTRADA DE DATOS (SIDEBAR / MENÚ IZQUIERDO) ---
 with st.sidebar:
@@ -19,25 +18,26 @@ with st.sidebar:
     nombre = st.text_input("Nombre y Apellido", "Juan Pérez")
     n_cliente = st.text_input("Número de Cliente", "001")
     
-    st.header("⚙️ Parámetros de Cobro")
-    # Estos valores afectan el total pero no aparecen con nombre en la boleta
-    precio_kwh = st.number_input("Valor por kWh ($)", min_value=0.0, value=150.0, help="Cálculo interno")
-    cobro_general = st.number_input("Cobro General ($)", min_value=0, value=0, help="Monto base sumado al total")
-    
-    st.header("📊 Lecturas y Extras")
-    ant = st.number_input("Lectura Anterior (kWh)", min_value=0)
-    actual = st.number_input("Lectura Actual (kWh)", min_value=0)
+    st.header("⚙️ Parámetros de Cobro (Editables)")
+    # Casillas editables independientes
+    precio_kwh = st.number_input("Valor por kWh ($)", min_value=0.0, value=150.0)
+    cobro_general = st.number_input("Cobro General ($)", min_value=0, value=0)
     cargo_lectura = st.number_input("Valor por Toma de Lectura ($)", min_value=0, value=1000)
     cobros_extras = st.number_input("Cobros Extras ($)", min_value=0, value=0)
+    
+    st.header("📊 Lecturas")
+    ant = st.number_input("Lectura Anterior (kWh)", min_value=0)
+    actual = st.number_input("Lectura Actual (kWh)", min_value=0)
 
 # --- LÓGICA DE CÁLCULO ---
 consumo_mes = max(0, actual - ant)
-# Cálculo que incluye los parámetros internos y el nuevo cobro general
 monto_energia = round(consumo_mes * precio_kwh)
+
+# Suma de todos los ítems editables
 total_final = monto_energia + cobro_general + cargo_lectura + cobros_extras
 
 # --- RESUMEN EN PANTALLA ---
-st.subheader("Resumen del Cálculo Actual")
+st.subheader("Resumen del Cálculo")
 c1, c2, c3, c4 = st.columns(4)
 c1.metric("Consumo", f"{consumo_mes} kWh")
 c2.metric("Cobro General", format_clp(cobro_general))
@@ -63,7 +63,7 @@ def crear_boleta_final(nombre, n_cliente, consumo, cargo_lec, extras, total):
     
     draw.line([40, 210, 460, 210], fill=(200, 200, 200), width=1)
     
-    # Detalle Visible (Sin Precio kWh ni Cobro General escrito)
+    # DETALLE VISIBLE (Aquí se oculta el Cobro General y el Precio kWh)
     y_det = 240
     draw.text((40, y_det), "DETALLE DE COBRO", fill=(100, 100, 100))
     
@@ -74,10 +74,10 @@ def crear_boleta_final(nombre, n_cliente, consumo, cargo_lec, extras, total):
     draw.text((320, y_det + 70), format_clp(cargo_lec), fill=(0, 0, 0))
     
     if extras > 0:
-        draw.text((40, y_det + 100), "Cobros Extras / Otros:", fill=(0, 0, 0))
+        draw.text((40, y_det + 100), "Cobros Adicionales / Extras:", fill=(0, 0, 0))
         draw.text((320, y_det + 100), format_clp(extras), fill=(0, 0, 0))
     
-    # Recuadro para el TOTAL (Suma interna de todo)
+    # TOTAL (Suma interna de todos los parámetros editables)
     draw.rectangle([40, 390, 460, 460], outline=(0, 0, 0), width=2)
     draw.text((60, 415), "TOTAL A PAGAR", fill=(0, 0, 0))
     draw.text((320, 415), f"{format_clp(total)}", fill=(0, 0, 0))
@@ -101,9 +101,9 @@ with col1:
         mime="image/png"
     )
 with col2:
-    # El Excel incluye todos los datos para tu control personal
+    # El Excel incluye el Cobro General para tu control
     df_registro = pd.DataFrame({
-        "Concepto": ["Consumo kWh", "Valor kWh (Oculto)", "Cobro General (Oculto)", "Toma Lectura", "Extras", "Total Cobrado"],
+        "Concepto": ["Consumo kWh", "Precio kWh (Interno)", "Cobro General (Interno)", "Toma Lectura", "Extras", "Total Final"],
         "Valor": [consumo_mes, format_clp(precio_kwh), format_clp(cobro_general), format_clp(cargo_lectura), format_clp(cobros_extras), format_clp(total_final)]
     })
     buffer_ex = BytesIO()
