@@ -92,7 +92,7 @@ with col1:
 with col2:
     # El Excel sí guarda todo para tu respaldo
     df_respaldo = pd.DataFrame({
-        "Detalle": ["Consumo kWh", "Precio kWh (Oculto)", "Cobro General (Oculto)", "Cargo Lectura", "Extras", "Total Pago"],
+        "Detalle": ["Consumo kWh", "Cargo Lectura", "Extras", "Total Pago"],
         "Valor": [consumo_mes, precio_kwh, cobro_general_base, cargo_lectura, cobros_extras, total_final]
     })
     output = BytesIO()
