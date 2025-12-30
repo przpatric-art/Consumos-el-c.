@@ -24,6 +24,7 @@ with st.sidebar:
     precio_kwh = st.number_input("Precio por kWh ($)", min_value=0.0, value=150.0)
     cargo_fijo = st.number_input("Cargo Toma Lectura ($)", min_value=0, value=1000)
     cobros_extras = st.number_input("Otros Cobros / Extras ($)", min_value=0, value=0)
+cobro general = st.number_input("Otros Cobros / Extras ($)", min_value=0, value=0)
 
 # --- CÁLCULOS ---
 consumo_mes = max(0, actual - ant)
